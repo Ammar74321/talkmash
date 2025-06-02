@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web View</title>
+    <title>Universal Web View</title>
     <style>
         * {
             margin: 0;
@@ -29,6 +29,11 @@
             height: 100%;
             border: none;
             background: white;
+            display: block;
+        }
+        
+        .web-frame.hidden {
+            display: none;
         }
         
         .loading {
@@ -36,10 +41,15 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            display: none;
+            display: flex;
             flex-direction: column;
             align-items: center;
             gap: 15px;
+            z-index: 10;
+        }
+        
+        .loading.hidden {
+            display: none;
         }
         
         .spinner {
@@ -64,11 +74,42 @@
             text-align: center;
             color: #666;
             display: none;
+            z-index: 10;
+            padding: 20px;
         }
         
         .error-icon {
             font-size: 48px;
             margin-bottom: 15px;
+        }
+        
+        .retry-btn {
+            background: #007AFF;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 15px;
+            transition: background 0.2s;
+        }
+        
+        .retry-btn:hover {
+            background: #0056CC;
+        }
+        
+        .status {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            z-index: 10;
+            display: none;
         }
     </style>
 </head>
@@ -76,20 +117,47 @@
     <div class="web-container">
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <div>Loading website...</div>
+            <div id="loadingText">Loading website...</div>
         </div>
         
         <div class="error" id="error">
             <div class="error-icon">⚠️</div>
-            <div>Unable to load website</div>
+            <div id="errorText">Unable to load website</div>
+            <button class="retry-btn" onclick="retryLoading()">Try Again</button>
         </div>
         
+        <div class="status" id="status">Direct</div>
+        
+        <!-- Primary iframe -->
         <iframe 
-            id="webFrame" 
+            id="webFrame1" 
             class="web-frame"
-            src="https://classic.talkomatic.co/room.html?roomId=634365"
-            onload="frameLoaded()"
-            onerror="frameError()">
+            onload="frameLoaded(1)"
+            onerror="frameError(1)">
+        </iframe>
+        
+        <!-- Proxy iframe 1 -->
+        <iframe 
+            id="webFrame2" 
+            class="web-frame hidden"
+            onload="frameLoaded(2)"
+            onerror="frameError(2)">
+        </iframe>
+        
+        <!-- Proxy iframe 2 -->
+        <iframe 
+            id="webFrame3" 
+            class="web-frame hidden"
+            onload="frameLoaded(3)"
+            onerror="frameError(3)">
+        </iframe>
+        
+        <!-- Proxy iframe 3 -->
+        <iframe 
+            id="webFrame4" 
+            class="web-frame hidden"
+            onload="frameLoaded(4)"
+            onerror="frameError(4)">
         </iframe>
     </div>
 
@@ -97,7 +165,19 @@
         // ========================================
         // CHANGE THIS URL TO YOUR DESIRED WEBSITE
         // ========================================
-        const WEBSITE_URL = "https://classic.talkomatic.co/room.html?roomId=634365";
+        const WEBSITE_URL = "https://www.famousbirthdays.com/";
+        
+        let currentAttempt = 1;
+        let maxAttempts = 4;
+        let loadTimeout;
+        
+        // Proxy services to bypass iframe restrictions
+        const proxyServices = [
+            '', // Direct load
+            'https://cors-anywhere.herokuapp.com/',
+            'https://api.allorigins.win/raw?url=',
+            'https://proxy.cors.sh/'
+        ];
         
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -105,29 +185,153 @@
         });
         
         function loadWebsite() {
-            const frame = document.getElementById('webFrame');
-            const loading = document.getElementById('loading');
-            const error = document.getElementById('error');
-            
-            // Show loading
-            loading.style.display = 'flex';
-            error.style.display = 'none';
-            
-            // Load the website
-            frame.src = WEBSITE_URL;
+            currentAttempt = 1;
+            showLoading('Connecting to website...');
+            hideError();
+            hideAllFrames();
+            tryLoadMethod(currentAttempt);
         }
         
-        function frameLoaded() {
-            const loading = document.getElementById('loading');
-            loading.style.display = 'none';
+        function tryLoadMethod(attempt) {
+            if (attempt > maxAttempts) {
+                showError('All connection methods failed. This website may not allow embedding.');
+                return;
+            }
+            
+            const frame = document.getElementById(`webFrame${attempt}`);
+            const proxy = proxyServices[attempt - 1];
+            let url = WEBSITE_URL;
+            
+            // Update loading text based on method
+            const methods = ['Direct connection', 'Using proxy server', 'Alternative proxy', 'Backup method'];
+            showLoading(`Trying ${methods[attempt - 1]}...`);
+            
+            // Clear any existing timeout
+            if (loadTimeout) {
+                clearTimeout(loadTimeout);
+            }
+            
+            // Construct URL with proxy if needed
+            if (proxy) {
+                if (proxy.includes('allorigins')) {
+                    url = proxy + encodeURIComponent(WEBSITE_URL);
+                } else {
+                    url = proxy + WEBSITE_URL;
+                }
+            }
+            
+            // Set timeout for this attempt
+            loadTimeout = setTimeout(() => {
+                frameError(attempt);
+            }, 10000); // 10 second timeout
+            
+            // Try to load
+            frame.src = url;
+            
+            // Update status
+            updateStatus(attempt);
         }
         
-        function frameError() {
+        function frameLoaded(frameNumber) {
+            if (frameNumber === currentAttempt) {
+                clearTimeout(loadTimeout);
+                hideLoading();
+                hideError();
+                showFrame(frameNumber);
+                console.log(`Successfully loaded using method ${frameNumber}`);
+            }
+        }
+        
+        function frameError(frameNumber) {
+            if (frameNumber === currentAttempt) {
+                clearTimeout(loadTimeout);
+                console.log(`Method ${frameNumber} failed, trying next...`);
+                
+                currentAttempt++;
+                if (currentAttempt <= maxAttempts) {
+                    setTimeout(() => tryLoadMethod(currentAttempt), 1000);
+                } else {
+                    showError('Unable to load this website. It may block embedding or require direct access.');
+                }
+            }
+        }
+        
+        function showFrame(frameNumber) {
+            // Hide all frames first
+            hideAllFrames();
+            
+            // Show the successful frame
+            const frame = document.getElementById(`webFrame${frameNumber}`);
+            frame.classList.remove('hidden');
+        }
+        
+        function hideAllFrames() {
+            for (let i = 1; i <= maxAttempts; i++) {
+                const frame = document.getElementById(`webFrame${i}`);
+                frame.classList.add('hidden');
+            }
+        }
+        
+        function showLoading(text) {
             const loading = document.getElementById('loading');
+            const loadingText = document.getElementById('loadingText');
+            loading.classList.remove('hidden');
+            loadingText.textContent = text;
+        }
+        
+        function hideLoading() {
+            const loading = document.getElementById('loading');
+            loading.classList.add('hidden');
+        }
+        
+        function showError(message) {
             const error = document.getElementById('error');
-            loading.style.display = 'none';
+            const errorText = document.getElementById('errorText');
             error.style.display = 'block';
+            errorText.textContent = message;
+            hideLoading();
         }
+        
+        function hideError() {
+            const error = document.getElementById('error');
+            error.style.display = 'none';
+        }
+        
+        function updateStatus(method) {
+            const status = document.getElementById('status');
+            const statusTexts = ['Direct', 'Proxy 1', 'Proxy 2', 'Proxy 3'];
+            status.textContent = statusTexts[method - 1];
+            status.style.display = 'block';
+        }
+        
+        function retryLoading() {
+            loadWebsite();
+        }
+        
+        // Handle iframe load errors more gracefully
+        window.addEventListener('message', function(event) {
+            // Handle cross-origin errors
+            console.log('Received message:', event);
+        });
+        
+        // Detect if frame is blocked
+        function checkFrameBlocked() {
+            setTimeout(() => {
+                const frames = document.querySelectorAll('.web-frame');
+                frames.forEach((frame, index) => {
+                    try {
+                        if (frame.contentDocument === null && frame.src) {
+                            console.log(`Frame ${index + 1} may be blocked`);
+                        }
+                    } catch (e) {
+                        console.log(`Frame ${index + 1} cross-origin restriction`);
+                    }
+                });
+            }, 2000);
+        }
+        
+        // Start checking after page load
+        setTimeout(checkFrameBlocked, 3000);
     </script>
 </body>
 </html>
