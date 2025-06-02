@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web View</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #fff;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .url-display {
+            background: #f8f9fa;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #666;
+            flex: 1;
+            margin-right: 15px;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        
+        .refresh-btn {
+            background: #007AFF;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        
+        .refresh-btn:hover {
+            background: #0056CC;
+        }
+        
+        .web-container {
+            height: calc(100vh - 60px);
+            width: 100%;
+            position: relative;
+        }
+        
+        .web-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e0e0e0;
+            border-top: 4px solid #007AFF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #666;
+            display: none;
+        }
+        
+        .error-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="url-display" id="urlDisplay">Loading...</div>
+        <button class="refresh-btn" onclick="refreshPage()">↻ Refresh</button>
+    </div>
+    
+    <div class="web-container">
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>Loading website...</div>
+        </div>
+        
+        <div class="error" id="error">
+            <div class="error-icon">⚠️</div>
+            <div>Unable to load website</div>
+        </div>
+        
+        <iframe 
+            id="webFrame" 
+            class="web-frame"
+            src="https://www.google.com"
+            onload="frameLoaded()"
+            onerror="frameError()">
+        </iframe>
+    </div>
+
+    <script>
+        // ========================================
+        // CHANGE THIS URL TO YOUR DESIRED WEBSITE
+        // ========================================
+        const WEBSITE_URL = "https://previewer.adalo.com/d191e532-083a-4494-af5e-8d94806a1532";
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadWebsite();
+        });
+        
+        function loadWebsite() {
+            const frame = document.getElementById('webFrame');
+            const urlDisplay = document.getElementById('urlDisplay');
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            
+            // Show loading
+            loading.style.display = 'flex';
+            error.style.display = 'none';
+            
+            // Update URL display
+            urlDisplay.textContent = WEBSITE_URL;
+            
+            // Load the website
+            frame.src = WEBSITE_URL;
+        }
+        
+        function frameLoaded() {
+            const loading = document.getElementById('loading');
+            loading.style.display = 'none';
+        }
+        
+        function frameError() {
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            loading.style.display = 'none';
+            error.style.display = 'block';
+        }
+        
+        function refreshPage() {
+            loadWebsite();
+        }
+    </script>
+</body>
+</html>
